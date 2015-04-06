@@ -2,6 +2,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
 /*
@@ -25,27 +26,35 @@ public class Slave implements Runnable {
 	private ObjectOutputStream out = null;
 	private int state = Constant.STATE_INIT;
 	
+	private final ByteBuffer buf = ByteBuffer.allocate(Constant.BUFFER_SIZE);
+	
 	public static void main(String[] args) throws IOException {
 		new Thread(new Slave(), "Slave").start();
 	}
 	
 	Slave() throws IOException {
 		masterCommunication = SocketChannel.open(new InetSocketAddress(HOST, PORT));
-		masterCommunication.configureBlocking(true);
+		masterCommunication.configureBlocking(false);
 		
 		System.out.println("Connected to " + HOST + " at port " + PORT);
 		
-		// in = new ObjectInputStream(masterCommunication.socket().getInputStream());
-		// out = new ObjectOutputStream(masterCommunication.socket().getOutputStream());
 	}
 	
-	private void sendIntToMaster(int intMessage) throws IOException {
-		out.writeInt(intMessage);
-		out.flush();
+	private void writeIntToMaster(int intMessage) throws IOException {
+		buf.clear();
+		buf.putInt(intMessage);
+		buf.flip();
+		
+		while (buf.hasRemaining()) {
+			masterCommunication.write(buf);
+		}
+		
 	}
 	
 	private int readIntFromMaster() throws IOException {
-		return in.readInt();
+		buf.clear();
+		int bytesRead = masterCommunication.read(buf);
+		return buf.asIntBuffer().get(0);
 	}
 
 	@Override
@@ -55,17 +64,37 @@ public class Slave implements Runnable {
 			while (!communicationEnd) {
 				switch (state) {
 				case Constant.STATE_INIT:
-					System.out.println(masterCommunication.isConnected());
-					communicationEnd = true;
+					System.out.println("State INIT");
+					
+					if (readIntFromMaster() == Constant.MSG_PREP) {
+						writeIntToMaster(Constant.MSG_OK);
+						state = Constant.STATE_PREP;
+					}
 					break;
 				case Constant.STATE_PREP:
+					System.out.println("State PREP");
+
+					writeIntToMaster(Constant.MSG_COMMIT);
+					if (readIntFromMaster() == Constant.MSG_OK);
+						state = Constant.STATE_WAIT;
 					break;
 				case Constant.STATE_WAIT:
+					System.out.println("State WAIT");
+					
+					int vote;
+					if ( (vote = readIntFromMaster()) == Constant.MSG_COMMIT || vote == Constant.MSG_COMMIT ) {
+						writeIntToMaster(Constant.MSG_OK);
+						communicationEnd = true;
+					}
 					break;
 				default:
 					break;
 				}
+				
+				Thread.sleep(1000);
 			}
+		} catch (IOException e) {
+		} catch (InterruptedException e) {
 		} finally {
 			try {
 				//in.close();

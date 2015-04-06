@@ -15,10 +15,13 @@ public final class Constant {
 	public static final int STATE_WAIT = 0;
 	public static final int STATE_PREP = 1;
 
-	public static final int END_OF_MESSAGE = -1;
-	public static final int COMMIT_MESSAGE = 0;
-	public static final int ABORT_MESSAGE = 0;
-	public static final int OK_MESSAGE = 0;
+	public static final int MSG_EOF = -1;
+	public static final int MSG_COMMIT = 0;
+	public static final int MSG_ABORT = 1;
+	public static final int MSG_OK = 2;
+	public static final int MSG_PREP = 3;
 	public static final int TIME_OUT = 1000;
+	
+	public static final int BUFFER_SIZE = 83780;
 
 }

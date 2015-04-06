@@ -11,6 +11,7 @@
  */
 public final class Constant {
 	public static final int COM_PORT = 12345;
+	public static final int STATE_INIT = 2;
 	public static final int STATE_WAIT = 0;
 	public static final int STATE_PREP = 1;
 
